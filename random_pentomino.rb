@@ -24,7 +24,7 @@ class RandomPentomino
         puts
     end
     def result
-        @order.each{|i|
+        @order.each_with_index{|i,cnt|
             x=i % @n
             y=i/@n
             neighbour_cluster=neighbour_cluster(x,y)    
@@ -33,7 +33,7 @@ class RandomPentomino
             #puts neighbour_cluster 
             new_size=1+ neighbour_cluster.map{|e|@cluster_size[e[:id]]}.inject(0, :+)
             #return "exceeded 5" if new_size>5
-            return [new_size] if new_size>5
+            return cnt,[new_size] if new_size>5
             if new_size==1 then
                 @board[y][x]=@cluster_size.size
                 @cluster_size[@board[y][x]]=1
@@ -42,7 +42,7 @@ class RandomPentomino
                 if new_size==5
                     generate_result(x,y)            
                     #return "occurred\n"+board_str(@result_board)+"\n"+@result_pentomino.to_s
-                    return @result_pentomino
+                    return cnt,@result_pentomino
                 end
             end
         }
@@ -155,20 +155,44 @@ end
 
 pen=Pentomino.new()
 puts "set,n,type,count"
-1000.times{|set|
-    [10,100,1000].each{|n|
+SetN=9000
+SetN.times{|set|
+    [4,16,64,256,1024].each{|n|
+    STDERR.print n
         histogram={}
         ((5+1)..((5-1)*4+1)).each{|i| histogram[("reset#{i}").to_s]=0}
         pen.arr_xy_to_type.values.uniq.each{|type| histogram[type]=0}
-        (1000).times{
-            res= RandomPentomino.new(n).result
+        cnt_arr=[]
+        (1000).times{|t|
+            cnt,res= RandomPentomino.new(n).result
+            cnt_arr<<cnt
             if res.size==1 then
                 histogram[("reset#{res[0]}").to_s]+=1
             else
                 histogram[pen.arr_xy_to_type[res]]+=1
             end
+            STDERR.print "*" if t%100==1 
         }
         puts histogram.to_a.map{|e| "#{set},#{n},#{e[0]},#{e[1]}"}.join("\n")
+        puts "#{set},#{n},count_average,#{cnt_arr.sum.to_f/(cnt_arr.size)}"
+        puts "#{set},#{n},count_min,#{cnt_arr.min}"
+        puts "#{set},#{n},count_max,#{cnt_arr.max}"
+        STDOUT.flush
+        STDERR.puts    
     }
-    STDERR.puts("#{set}/1000")
+    STDERR.puts("#{set}/#{SetN}")
 }
+
+=begin
+
+$ time ruby random_pentomino.rb > out.csv
+real    7m52.562s
+user    7m50.252s
+sys     0m2.169s
+
+$ time seq 5 | xargs -t -I{} -P5 -n1 sh -c 'ruby random_pentomino.rb >out_{}.csv'
+real    11m19.744s
+user    55m42.967s
+sys     0m10.523s
+
+=end
